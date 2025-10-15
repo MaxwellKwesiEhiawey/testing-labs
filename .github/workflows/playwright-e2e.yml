@@ -1,0 +1,451 @@
+name: OrangeHRM E2E Test Automation
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    # Run nightly regression tests at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      test_suite:
+        description: 'Test suite to run'
+        required: true
+        default: 'smoke'
+        type: choice
+        options:
+          - smoke
+          - regression
+          - employee
+          - leave
+          - access-control
+          - visual
+          - e2e
+          - all
+      browser:
+        description: 'Browser to run tests on'
+        required: true
+        default: 'chromium'
+        type: choice
+        options:
+          - chromium
+          - firefox
+          - webkit
+          - all
+
+jobs:
+  # Job 1: Smoke Tests (Run on all PRs and pushes)
+  smoke-tests:
+    name: Smoke Tests
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' || github.event_name == 'push'
+    strategy:
+      matrix:
+        browser: [chromium, firefox, webkit]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+        
+      - name: Run smoke tests
+        run: |
+          npx playwright test --grep "@smoke" --project=${{ matrix.browser }} \
+            --reporter=html,allure-playwright
+        env:
+          BROWSER: ${{ matrix.browser }}
+          BASE_URL: 'https://opensource-demo.orangehrmlive.com'
+          ADMIN_USERNAME: 'Admin'
+          ADMIN_PASSWORD: 'admin123'
+          ESS_USERNAME: 'ess-user'
+          ESS_PASSWORD: 'ess123'
+          MANAGER_USERNAME: 'manager-user'
+          MANAGER_PASSWORD: 'manager123'
+          
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smoke-test-results-${{ matrix.browser }}
+          path: |
+            playwright-report/
+            test-results/
+            allure-results/
+          retention-days: 7
+
+  # Job 2: Regression Tests (Run nightly and on demand)
+  regression-tests:
+    name: Regression Tests
+    runs-on: ubuntu-latest
+    if: github.event.schedule || (github.event_name == 'workflow_dispatch' && contains(fromJson('["regression", "all"]'), github.event.inputs.test_suite))
+    strategy:
+      matrix:
+        browser: [chromium, firefox, webkit]
+        shard: [1, 2, 3, 4] # Parallel execution across 4 shards
+        
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+        
+      - name: Run regression tests
+        run: |
+          npx playwright test --grep "@regression" --project=${{ matrix.browser }} \
+            --shard=${{ matrix.shard }}/4 \
+            --reporter=html,allure-playwright
+        env:
+          BROWSER: ${{ matrix.browser }}
+          BASE_URL: 'https://opensource-demo.orangehrmlive.com'
+          ADMIN_USERNAME: 'Admin'
+          ADMIN_PASSWORD: 'admin123'
+          ESS_USERNAME: 'ess-user'
+          ESS_PASSWORD: 'ess123'
+          MANAGER_USERNAME: 'manager-user'
+          MANAGER_PASSWORD: 'manager123'
+          
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: regression-test-results-${{ matrix.browser }}-shard-${{ matrix.shard }}
+          path: |
+            playwright-report/
+            test-results/
+            allure-results/
+          retention-days: 30
+
+  # Job 3: Feature-specific Tests (On demand)
+  feature-tests:
+    name: Feature Tests
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && contains(fromJson('["employee", "leave", "access-control", "visual", "e2e"]'), github.event.inputs.test_suite)
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+        
+      - name: Determine test pattern
+        id: test-pattern
+        run: |
+          case "${{ github.event.inputs.test_suite }}" in
+            "employee")
+              echo "pattern=@employee" >> $GITHUB_OUTPUT
+              ;;
+            "leave")
+              echo "pattern=@leave" >> $GITHUB_OUTPUT
+              ;;
+            "access-control")
+              echo "pattern=@access-control" >> $GITHUB_OUTPUT
+              ;;
+            "visual")
+              echo "pattern=@visual" >> $GITHUB_OUTPUT
+              ;;
+            "e2e")
+              echo "pattern=@e2e" >> $GITHUB_OUTPUT
+              ;;
+          esac
+          
+      - name: Run feature tests
+        run: |
+          BROWSER_ARG=""
+          if [ "${{ github.event.inputs.browser }}" != "all" ]; then
+            BROWSER_ARG="--project=${{ github.event.inputs.browser }}"
+          fi
+          
+          npx playwright test --grep "${{ steps.test-pattern.outputs.pattern }}" \
+            $BROWSER_ARG \
+            --reporter=html,allure-playwright
+        env:
+          BASE_URL: 'https://opensource-demo.orangehrmlive.com'
+          ADMIN_USERNAME: 'Admin'
+          ADMIN_PASSWORD: 'admin123'
+          ESS_USERNAME: 'ess-user'
+          ESS_PASSWORD: 'ess123'
+          MANAGER_USERNAME: 'manager-user'
+          MANAGER_PASSWORD: 'manager123'
+            
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: feature-test-results-${{ github.event.inputs.test_suite }}
+          path: |
+            playwright-report/
+            test-results/
+            allure-results/
+          retention-days: 14
+
+  # Job 4: Generate and publish Allure report
+  allure-report:
+    name: Generate Allure Report
+    runs-on: ubuntu-latest
+    needs: [smoke-tests, regression-tests, feature-tests]
+    if: always() && (needs.smoke-tests.result == 'success' || needs.regression-tests.result == 'success' || needs.feature-tests.result == 'success')
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Java for Allure
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          
+      - name: Download all test artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+          
+      - name: Combine Allure results
+        run: |
+          mkdir -p allure-results-combined
+          find artifacts/ -name "allure-results" -type d | while read dir; do
+            if [ -d "$dir" ] && [ "$(ls -A "$dir")" ]; then
+              cp -r "$dir"/* allure-results-combined/ 2>/dev/null || true
+            fi
+          done
+          
+      - name: Generate Allure report
+        run: |
+          curl -o allure-commandline.tgz -Ls https://github.com/allure-framework/allure2/releases/download/2.24.0/allure-2.24.0.tgz
+          tar -zxf allure-commandline.tgz
+          ./allure-2.24.0/bin/allure generate allure-results-combined --clean -o allure-report
+          
+      - name: Deploy Allure report to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        if: github.ref == 'refs/heads/main'
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./allure-report
+          destination_dir: allure-report/${{ github.run_number }}
+          
+      - name: Upload Allure report
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-report
+          path: allure-report/
+          retention-days: 30
+          
+      - name: Comment PR with test results
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            
+            // Read test results summary
+            let summary = "## 🧪 Test Results Summary\n\n";
+            
+            try {
+              const reportPath = 'allure-report/widgets/summary.json';
+              if (fs.existsSync(reportPath)) {
+                const summaryData = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
+                
+                summary += `- **Total Tests:** ${summaryData.statistic.total}\n`;
+                summary += `- **Passed:** ✅ ${summaryData.statistic.passed}\n`;
+                summary += `- **Failed:** ❌ ${summaryData.statistic.failed}\n`;
+                summary += `- **Skipped:** ⏭️ ${summaryData.statistic.skipped}\n`;
+                summary += `- **Success Rate:** ${((summaryData.statistic.passed / summaryData.statistic.total) * 100).toFixed(1)}%\n\n`;
+              }
+            } catch (error) {
+              summary += "Unable to read test summary details.\n\n";
+            }
+            
+            summary += `📊 [View Detailed Report](https://your-github-username.github.io/labs/allure-report/${{ github.run_number }})\n\n`;
+            summary += `Run ID: \`${{ github.run_id }}\``;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: summary
+            });
+
+  # Job 5: Performance monitoring
+  performance-monitoring:
+    name: Performance Monitoring
+    runs-on: ubuntu-latest
+    if: github.event.schedule || github.event_name == 'workflow_dispatch'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+        
+      - name: Run performance tests
+        run: |
+          npx playwright test --grep "@smoke" --project=chromium \
+            --reporter=html \
+            --timeout=60000
+        env:
+          PERFORMANCE_MODE: true
+          BASE_URL: 'https://opensource-demo.orangehrmlive.com'
+          ADMIN_USERNAME: 'Admin'
+          ADMIN_PASSWORD: 'admin123'
+          ESS_USERNAME: 'ess-user'
+          ESS_PASSWORD: 'ess123'
+          MANAGER_USERNAME: 'manager-user'
+          MANAGER_PASSWORD: 'manager123'
+          
+      - name: Upload performance results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: performance-results
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 30
+
+  # Job 6: Security and accessibility tests
+  security-accessibility:
+    name: Security & Accessibility Tests
+    runs-on: ubuntu-latest
+    if: github.event.schedule || (github.event_name == 'workflow_dispatch' && github.event.inputs.test_suite == 'all')
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+        
+      - name: Run accessibility tests
+        run: |
+          # Run tests with accessibility checks
+          npx playwright test --grep "@smoke" --project=chromium \
+            --reporter=html
+        env:
+          ACCESSIBILITY_MODE: true
+          BASE_URL: 'https://opensource-demo.orangehrmlive.com'
+          ADMIN_USERNAME: 'Admin'
+          ADMIN_PASSWORD: 'admin123'
+          ESS_USERNAME: 'ess-user'
+          ESS_PASSWORD: 'ess123'
+          MANAGER_USERNAME: 'manager-user'
+          MANAGER_PASSWORD: 'manager123'
+          
+      - name: Upload security & accessibility results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: security-accessibility-results
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 30
+
+  # Job 7: Test environment health check
+  health-check:
+    name: Environment Health Check
+    runs-on: ubuntu-latest
+    if: github.event.schedule
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Health check script
+        run: |
+          node -e "
+            const https = require('https');
+            const url = process.env.BASE_URL;
+            
+            console.log('Checking health of:', url);
+            
+            https.get(url, (res) => {
+              console.log('Status Code:', res.statusCode);
+              console.log('Headers:', res.headers);
+              
+              if (res.statusCode === 200) {
+                console.log('✅ Environment is healthy');
+                process.exit(0);
+              } else {
+                console.log('❌ Environment health check failed');
+                process.exit(1);
+              }
+            }).on('error', (err) => {
+              console.log('❌ Environment health check failed:', err.message);
+              process.exit(1);
+            });
+          "
+          
+      - name: Notify on health check failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: '🚨 Test Environment Health Check Failed',
+              body: `The test environment health check failed on ${new Date().toISOString()}.\n\nPlease investigate the OrangeHRM demo environment: ${process.env.BASE_URL}`,
+              labels: ['bug', 'environment', 'urgent']
+            });

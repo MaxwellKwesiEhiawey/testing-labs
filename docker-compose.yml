@@ -1,0 +1,199 @@
+version: '3.8'
+
+services:
+  # Main test runner service
+  playwright-tests:
+    build:
+      context: .
+      target: production
+    environment:
+      - BASE_URL=${BASE_URL:-https://opensource-demo.orangehrmlive.com}
+      - ADMIN_USERNAME=${ADMIN_USERNAME:-Admin}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin123}
+      - ESS_USERNAME=${ESS_USERNAME:-linda.anderson}
+      - ESS_PASSWORD=${ESS_PASSWORD:-ess123}
+      - MANAGER_USERNAME=${MANAGER_USERNAME:-manager}
+      - MANAGER_PASSWORD=${MANAGER_PASSWORD:-manager123}
+      - CI=true
+    volumes:
+      - ./test-results:/app/test-results
+      - ./playwright-report:/app/playwright-report
+      - ./allure-results:/app/allure-results
+    networks:
+      - test-network
+    depends_on:
+      - selenium-hub
+    command: ["./scripts/run-tests.sh", "--suite", "${TEST_SUITE:-smoke}", "--browser", "${BROWSER:-chromium}"]
+
+  # Selenium Grid Hub for distributed testing
+  selenium-hub:
+    image: selenium/hub:4.15.0-20231025
+    container_name: selenium-hub
+    ports:
+      - "4444:4444"
+      - "4442:4442"
+      - "4443:4443"
+    environment:
+      - GRID_MAX_SESSION=16
+      - GRID_BROWSER_TIMEOUT=300
+      - GRID_TIMEOUT=300
+    networks:
+      - test-network
+
+  # Chrome browser node
+  chrome-node:
+    image: selenium/node-chrome:4.15.0-20231025
+    shm_size: 2gb
+    depends_on:
+      - selenium-hub
+    environment:
+      - HUB_HOST=selenium-hub
+      - HUB_PORT=4444
+      - NODE_MAX_INSTANCES=4
+      - NODE_MAX_SESSION=4
+    networks:
+      - test-network
+    scale: 2
+
+  # Firefox browser node
+  firefox-node:
+    image: selenium/node-firefox:4.15.0-20231025
+    shm_size: 2gb
+    depends_on:
+      - selenium-hub
+    environment:
+      - HUB_HOST=selenium-hub
+      - HUB_PORT=4444
+      - NODE_MAX_INSTANCES=4
+      - NODE_MAX_SESSION=4
+    networks:
+      - test-network
+
+  # Edge browser node
+  edge-node:
+    image: selenium/node-edge:4.15.0-20231025
+    shm_size: 2gb
+    depends_on:
+      - selenium-hub
+    environment:
+      - HUB_HOST=selenium-hub
+      - HUB_PORT=4444
+      - NODE_MAX_INSTANCES=4
+      - NODE_MAX_SESSION=4
+    networks:
+      - test-network
+
+  # Allure report server
+  allure-server:
+    build:
+      context: .
+      target: allure
+    ports:
+      - "4040:4040"
+    volumes:
+      - ./allure-results:/app/allure-results:ro
+      - ./allure-report:/app/allure-report
+    networks:
+      - test-network
+    depends_on:
+      - playwright-tests
+
+  # Test report server
+  report-server:
+    image: nginx:alpine
+    ports:
+      - "8080:80"
+    volumes:
+      - ./playwright-report:/usr/share/nginx/html/playwright:ro
+      - ./allure-report:/usr/share/nginx/html/allure:ro
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    networks:
+      - test-network
+    depends_on:
+      - playwright-tests
+
+  # Database for test data persistence (optional)
+  test-db:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_DB=testdata
+      - POSTGRES_USER=testuser
+      - POSTGRES_PASSWORD=testpass
+    volumes:
+      - test-db-data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - test-network
+    ports:
+      - "5432:5432"
+
+  # Redis for session management and caching
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    networks:
+      - test-network
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+
+  # Test monitoring and metrics
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    networks:
+      - test-network
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+
+  # Grafana for test metrics visualization
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    networks:
+      - test-network
+    depends_on:
+      - prometheus
+
+  # MinIO for artifact storage
+  minio:
+    image: minio/minio:latest
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      - MINIO_ACCESS_KEY=testuser
+      - MINIO_SECRET_KEY=testpass123
+    volumes:
+      - minio-data:/data
+    networks:
+      - test-network
+    command: server /data --console-address ":9001"
+
+networks:
+  test-network:
+    driver: bridge
+
+volumes:
+  test-db-data:
+    driver: local
+  redis-data:
+    driver: local
+  grafana-data:
+    driver: local
+  minio-data:
+    driver: local

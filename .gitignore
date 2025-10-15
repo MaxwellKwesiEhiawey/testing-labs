@@ -1,14 +1,173 @@
 
-# Playwright
+# ==============================================================================
+# Playwright Test Framework - Comprehensive .gitignore
+# ==============================================================================
+
+# Node.js Dependencies
 node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Package Manager Lock Files (choose one)
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Playwright Test Results & Reports
 /test-results/
 /playwright-report/
 /blob-report/
 /playwright/.cache/
 /playwright/.auth/
+test-results/
+playwright-report/
 
-# Allure Reports
+# Allure Reports & Results
 /allure-results/
 /allure-report/
 allure-results/
 allure-report/
+
+# Screenshots & Videos (Test Artifacts)
+screenshots/
+videos/
+downloads/
+traces/
+/test-artifacts/
+
+# Environment & Configuration Files
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+.env.staging
+*.env
+
+# IDE & Editor Files
+.vscode/settings.json
+.vscode/launch.json
+.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Coverage Reports
+coverage/
+*.lcov
+.nyc_output
+
+# TypeScript Build Output
+dist/
+build/
+*.tsbuildinfo
+
+# Temporary Files
+tmp/
+temp/
+*.tmp
+*.temp
+
+# OS Generated Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# Browser Downloads Directory
+/downloads/
+
+# Authentication & Secrets
+auth.json
+storage-state.json
+cookies.json
+session-storage.json
+local-storage.json
+
+# Performance & Debug Files
+*.trace
+*.har
+*.heapsnapshot
+
+# Custom Test Data (if containing sensitive info)
+/test-data/sensitive/
+/fixtures/production-data/
+
+# Docker
+.dockerignore
+Dockerfile.test
+
+# Backup Files
+*.bak
+*.backup
+*.old
+
+# JetBrains IDEs
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Visual Studio Code
+.vscode/
+!.vscode/tasks.json
+!.vscode/extensions.json
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# Other IDEs
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+.metadata
+
+# ==============================================================================
+# Keep these commented examples for reference
+# ==============================================================================
+
+# Uncomment if you want to ignore specific test files temporarily
+# tests/wip/
+# tests/experimental/
+
+# Uncomment if you have custom artifacts directories
+# /custom-reports/
+# /custom-screenshots/
+
+# Uncomment if you want to ignore specific browser profiles
+# /browser-profiles/

@@ -1,0 +1,316 @@
+{
+  "testConfig": {
+    "environments": {
+      "demo": {
+        "baseUrl": "https://opensource-demo.orangehrmlive.com",
+        "users": {
+          "admin": {
+            "username": "Admin",
+            "password": "admin123",
+            "role": "Admin"
+          },
+          "ess": {
+            "username": "linda.anderson",
+            "password": "ess123",
+            "role": "ESS"
+          },
+          "manager": {
+            "username": "manager",
+            "password": "manager123",
+            "role": "Manager"
+          }
+        },
+        "timeouts": {
+          "default": 30000,
+          "navigation": 60000,
+          "element": 10000
+        }
+      },
+      "staging": {
+        "baseUrl": "${STAGING_BASE_URL}",
+        "users": {
+          "admin": {
+            "username": "${STAGING_ADMIN_USERNAME}",
+            "password": "${STAGING_ADMIN_PASSWORD}",
+            "role": "Admin"
+          },
+          "ess": {
+            "username": "${STAGING_ESS_USERNAME}",
+            "password": "${STAGING_ESS_PASSWORD}",
+            "role": "ESS"
+          },
+          "manager": {
+            "username": "${STAGING_MANAGER_USERNAME}",
+            "password": "${STAGING_MANAGER_PASSWORD}",
+            "role": "Manager"
+          }
+        },
+        "timeouts": {
+          "default": 45000,
+          "navigation": 90000,
+          "element": 15000
+        }
+      }
+    },
+    "testSuites": {
+      "smoke": {
+        "description": "Critical smoke tests that must pass",
+        "tags": ["@smoke"],
+        "maxWorkers": 2,
+        "retries": 2,
+        "timeout": 60000,
+        "tests": [
+          "tests/login.spec.ts",
+          "tests/employee.spec.ts:1-3",
+          "tests/leave.spec.ts:1-2",
+          "tests/access-control.spec.ts:1"
+        ]
+      },
+      "regression": {
+        "description": "Full regression test suite",
+        "tags": ["@regression"],
+        "maxWorkers": 4,
+        "retries": 1,
+        "timeout": 120000,
+        "tests": [
+          "tests/employee.spec.ts",
+          "tests/leave.spec.ts",
+          "tests/access-control.spec.ts",
+          "tests/visual-ui.spec.ts"
+        ]
+      },
+      "employee": {
+        "description": "Employee management functionality tests",
+        "tags": ["@employee"],
+        "maxWorkers": 3,
+        "retries": 1,
+        "timeout": 90000,
+        "tests": [
+          "tests/employee.spec.ts",
+          "tests/e2e-scenario-a.spec.ts",
+          "tests/e2e-scenario-d.spec.ts"
+        ]
+      },
+      "leave": {
+        "description": "Leave management functionality tests",
+        "tags": ["@leave"],
+        "maxWorkers": 3,
+        "retries": 1,
+        "timeout": 90000,
+        "tests": [
+          "tests/leave.spec.ts",
+          "tests/e2e-scenario-c.spec.ts"
+        ]
+      },
+      "access-control": {
+        "description": "Access control and security tests",
+        "tags": ["@access-control"],
+        "maxWorkers": 2,
+        "retries": 1,
+        "timeout": 60000,
+        "tests": [
+          "tests/access-control.spec.ts",
+          "tests/e2e-scenario-b.spec.ts"
+        ]
+      },
+      "visual": {
+        "description": "Visual regression and UI tests",
+        "tags": ["@visual"],
+        "maxWorkers": 1,
+        "retries": 0,
+        "timeout": 180000,
+        "tests": [
+          "tests/visual-ui.spec.ts",
+          "tests/e2e-scenario-e.spec.ts"
+        ]
+      },
+      "e2e": {
+        "description": "End-to-end scenario tests",
+        "tags": ["@e2e"],
+        "maxWorkers": 2,
+        "retries": 1,
+        "timeout": 300000,
+        "tests": [
+          "tests/e2e-scenario-a.spec.ts",
+          "tests/e2e-scenario-b.spec.ts",
+          "tests/e2e-scenario-c.spec.ts",
+          "tests/e2e-scenario-d.spec.ts",
+          "tests/e2e-scenario-e.spec.ts"
+        ]
+      },
+      "critical": {
+        "description": "Critical business flow tests",
+        "tags": ["@critical"],
+        "maxWorkers": 2,
+        "retries": 2,
+        "timeout": 180000,
+        "tests": [
+          "tests/employee.spec.ts:Create new employee",
+          "tests/leave.spec.ts:Apply for leave",
+          "tests/access-control.spec.ts:Admin access verification"
+        ]
+      }
+    },
+    "browsers": {
+      "chromium": {
+        "channel": "chrome",
+        "viewport": { "width": 1920, "height": 1080 },
+        "deviceScaleFactor": 1,
+        "hasTouch": false,
+        "isMobile": false
+      },
+      "firefox": {
+        "viewport": { "width": 1920, "height": 1080 },
+        "deviceScaleFactor": 1,
+        "hasTouch": false,
+        "isMobile": false
+      },
+      "webkit": {
+        "viewport": { "width": 1920, "height": 1080 },
+        "deviceScaleFactor": 1,
+        "hasTouch": false,
+        "isMobile": false
+      },
+      "mobile-chrome": {
+        "channel": "chrome",
+        "viewport": { "width": 375, "height": 667 },
+        "deviceScaleFactor": 2,
+        "hasTouch": true,
+        "isMobile": true,
+        "userAgent": "Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15"
+      }
+    },
+    "reporting": {
+      "formats": ["html", "allure-playwright", "json", "junit"],
+      "screenshot": {
+        "mode": "only-on-failure",
+        "fullPage": true
+      },
+      "video": {
+        "mode": "retain-on-failure",
+        "size": { "width": 1920, "height": 1080 }
+      },
+      "trace": {
+        "mode": "retain-on-failure",
+        "screenshots": true,
+        "snapshots": true,
+        "sources": true
+      },
+      "allure": {
+        "outputFolder": "allure-results",
+        "detail": true,
+        "suiteTitle": true,
+        "categories": [
+          {
+            "name": "Critical failures",
+            "matchedStatuses": ["failed"],
+            "matchedResults": [
+              {
+                "status": "failed",
+                "message": ".*critical.*"
+              }
+            ]
+          },
+          {
+            "name": "Known issues",
+            "matchedStatuses": ["failed"],
+            "matchedResults": [
+              {
+                "status": "failed",
+                "message": ".*known.*issue.*"
+              }
+            ]
+          },
+          {
+            "name": "Flaky tests",
+            "matchedStatuses": ["passed"],
+            "matchedResults": [
+              {
+                "status": "passed",
+                "retry": true
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "parallel": {
+      "maxWorkers": 4,
+      "shardStrategy": "round-robin",
+      "retryStrategy": "exponential-backoff",
+      "failFast": false
+    },
+    "performance": {
+      "thresholds": {
+        "pageLoadTime": 5000,
+        "elementLoadTime": 2000,
+        "networkIdleTime": 3000
+      },
+      "monitoring": {
+        "enabled": true,
+        "collectMetrics": ["timing", "network", "cpu", "memory"],
+        "reportInterval": 30000
+      }
+    },
+    "security": {
+      "csp": {
+        "enforce": true,
+        "reportOnly": false
+      },
+      "https": {
+        "enforce": true,
+        "allowSelfSigned": false
+      },
+      "cookies": {
+        "secure": true,
+        "httpOnly": true,
+        "sameSite": "strict"
+      }
+    },
+    "accessibility": {
+      "standards": ["WCAG2A", "WCAG2AA"],
+      "rules": {
+        "color-contrast": true,
+        "keyboard-navigation": true,
+        "screen-reader": true,
+        "focus-management": true
+      },
+      "reportFormat": "sarif"
+    },
+    "monitoring": {
+      "healthCheck": {
+        "enabled": true,
+        "interval": 300000,
+        "endpoints": [
+          "/web/index.php/auth/login",
+          "/web/index.php/dashboard/index"
+        ],
+        "expectedStatus": 200,
+        "timeout": 10000
+      },
+      "alerts": {
+        "failureThreshold": 80,
+        "channels": ["email", "slack", "github"],
+        "escalation": {
+          "critical": ["team-lead", "manager"],
+          "warning": ["qa-team"]
+        }
+      }
+    },
+    "dataManagement": {
+      "testData": {
+        "strategy": "generated",
+        "persistence": "session",
+        "cleanup": "automatic"
+      },
+      "fixtures": {
+        "path": "./test-data/fixtures",
+        "format": "json"
+      },
+      "snapshots": {
+        "updateMode": "missing",
+        "threshold": 0.2
+      }
+    }
+  }
+}
