@@ -1,0 +1,40 @@
+{
+  "name": "labs",
+  "version": "1.0.0",
+  "description": "Automation Testing",
+  "main": "index.js",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:debug": "playwright test --debug",
+    "test:chromium": "playwright test --project=chromium",
+    "test:firefox": "playwright test --project=firefox",
+    "test:webkit": "playwright test --project=webkit",
+    "allure:generate": "allure generate allure-results --clean",
+    "allure:open": "allure open allure-report",
+    "allure:serve": "allure serve allure-results",
+    "test:allure": "npm run test && npm run allure:generate && npm run allure:open",
+    "clean:reports": "rm -rf allure-results allure-report playwright-report test-results"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MaxwellKwesiEhiawey/testing-labs.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/MaxwellKwesiEhiawey/testing-labs/issues"
+  },
+  "homepage": "https://github.com/MaxwellKwesiEhiawey/testing-labs#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.56.0",
+    "@types/node": "^24.7.2",
+    "allure-commandline": "^2.34.1",
+    "allure-playwright": "^3.4.1"
+  },
+  "dependencies": {
+    "dotenv": "^17.2.3"
+  }
+}

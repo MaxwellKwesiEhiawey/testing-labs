@@ -1,0 +1,45 @@
+{
+  "name": "OrangeHRM Multi-User Test Suite",
+  "description": "Comprehensive test suite for OrangeHRM application with multiple user roles (Admin, ESS, Manager) across different browsers",
+  "environment": {
+    "Base URL": "https://opensource-demo.orangehrmlive.com/",
+    "Test Framework": "Playwright",
+    "Language": "TypeScript",
+    "Node Version": "Latest",
+    "Browsers": "Chromium, Firefox, WebKit"
+  },
+  "categories": [
+    {
+      "name": "Product defects",
+      "messageRegex": ".*AssertionError.*",
+      "traceRegex": ".*AssertionError.*"
+    },
+    {
+      "name": "Test defects",
+      "messageRegex": ".*Error.*",
+      "traceRegex": ".*Error.*"
+    },
+    {
+      "name": "Broken tests",
+      "messageRegex": ".*timeout.*",
+      "traceRegex": ".*timeout.*"
+    },
+    {
+      "name": "Failed requests",
+      "messageRegex": ".*Request.*failed.*",
+      "traceRegex": ".*Request.*failed.*"
+    }
+  ],
+  "executors": [
+    {
+      "name": "Local Environment",
+      "type": "local",
+      "url": "http://localhost",
+      "buildOrder": 1,
+      "buildName": "Local Test Run",
+      "buildUrl": "http://localhost",
+      "reportName": "OrangeHRM Test Report",
+      "reportUrl": "http://localhost"
+    }
+  ]
+}
