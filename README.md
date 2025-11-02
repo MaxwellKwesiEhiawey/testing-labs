@@ -1,2 +1,0 @@
-# testing-labs
-Automation Testing
